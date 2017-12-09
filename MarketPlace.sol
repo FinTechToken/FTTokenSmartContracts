@@ -255,7 +255,7 @@ contract MarketPlace {
     }
 
     //approveAndCall to transfer tokens into TokenMP account
-    function receiveApproval( address _grantor, uint256 _value, address _from ) public returns ( bool success_ ) {
+    function receiveApproval( address _grantor, uint256 _value, address _from,  bytes _extraData ) public returns ( bool success_ ) {
         require(!freeze);
         require(accountBalance[_from][_grantor] + _value >= accountBalance[_from][_grantor]);
         TokenERC20 localTokenFrom = TokenERC20(_from);
