@@ -20,13 +20,13 @@ contract FreeToken {
     event Transfer( address indexed from, address indexed to, uint256 value ); // ERC20 Required
     event Approval( address indexed owner, address indexed spender, uint256 value ); // ERC20 Required
 
-    function FreeToken() public{ //Constructor
+    function FreeToken() public { //Constructor
         totalSupply = 10000000000000000000000000; //10M tokens + 18 digits
         totalOutstanding = 0;
         author = msg.sender;
     }
 
-    function() payable public{ //Fallback function. Fail for everything. Only accept legit transactions
+    function() payable public { //Fallback function. Fail for everything. Only accept legit transactions
         require (false);
     }
 
