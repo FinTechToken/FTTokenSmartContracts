@@ -1,4 +1,4 @@
-pragma solidity ^0.4.2;
+pragma solidity ^0.4.23;
 
 contract TokenERCOptional { // ethereum.org examples
     function receiveApproval( address _from, uint256 _value, address _token, bytes _extraData ) public returns ( bool success_ ); 
@@ -43,33 +43,38 @@ contract MarketPlaceToken {
     event DoingRaise(uint256 raisePrice, uint256 raiseTokens, uint256 now);
     event ChangingRaise(uint256 raisePrice, uint256 raiseTokens, uint256 now);
 
-    function MarketPlaceToken() public {   //Constructor
+    constructor() 
+        public {   //Constructor
         totalSupply = 1000000; //1M non-divisible tokens
         payOutLimit = 1000000000000000000; // 1 Ether
         author = msg.sender;
         admin = msg.sender;
     }
 
-    function() public payable {   //Fallback function. Fail for everything. Only accept legit transactions
+    function() 
+        public payable {   //Fallback function. Fail for everything. Only accept legit transactions
         require (false);
     } 
 
-    function transfer( address _to, uint256 _value ) public returns ( bool success_ ) {   //ERC20 Required - Transfer Tokens
+    function transfer( address _to, uint256 _value ) 
+        public returns ( bool success_ ) {   //ERC20 Required - Transfer Tokens
         return internalTransfer(msg.sender, _to, _value);
     }
     
-    function transferFrom( address _from, address _to, uint256 _value ) public returns ( bool success_ ) {   // ERC20 Required - Transfer after sender is approved.
+    function transferFrom( address _from, address _to, uint256 _value ) 
+        public returns ( bool success_ ) {   // ERC20 Required - Transfer after sender is approved.
         require(_value <= allowance[_from][msg.sender]);
         if ( balanceOf[_from] < _value ) {   //if balance is below approval, remove approval
             allowance[_from][msg.sender] = 0; 
             return false;
         }
         allowance[_from][msg.sender] -= _value;
-        Approval(_from, msg.sender, allowance[_from][msg.sender]);
+        emit Approval(_from, msg.sender, allowance[_from][msg.sender]);
         return internalTransfer(_from, _to, _value);
     }
 
-    function internalTransfer( address _from, address _to, uint256 _value ) internal returns ( bool success_ ) {   // Transfor tokens. 
+    function internalTransfer( address _from, address _to, uint256 _value ) 
+        internal returns ( bool success_ ) {   // Transfor tokens. 
         require(_to != address(0)); // Prevent transfer to 0x0 address.
         require(balanceOf[_from] >= _value);
         require(balanceOf[_to] + _value > balanceOf[_to]);  // Overflow and > 0 check
@@ -77,38 +82,41 @@ contract MarketPlaceToken {
         setPayOut(_to);
         if ( cast[_from] != address(0) ) {   //remove previous vote
             votes[cast[_from]] -= _value;
-            NewVote(_from, cast[_from], votes[cast[_from]], now);
+            emit NewVote(_from, cast[_from], votes[cast[_from]], now);
         }
         if ( cast[_to] != address(0) ) {   //add new vote
             votes[cast[_to]] += _value;
-            NewVote(_to, cast[_to], votes[cast[_to]], now);
+            emit NewVote(_to, cast[_to], votes[cast[_to]], now);
         }
         balanceOf[_from] -= _value; 
         balanceOf[_to] += _value;
-        Transfer(_from, _to, _value);
+        emit Transfer(_from, _to, _value);
         return true;
     }
 
-    function approve( address _spender, uint256 _value ) public returns ( bool success_ ) {   // ERC20 Required - Approve an address to transfor tokens
+    function approve( address _spender, uint256 _value ) 
+        public returns ( bool success_ ) {   // ERC20 Required - Approve an address to transfor tokens
         require(balanceOf[msg.sender] >= _value);
         require(allowance[msg.sender][_spender] + _value > allowance[msg.sender][_spender]);
         require(allowance[msg.sender][_spender] + _value <= balanceOf[msg.sender]);
         allowance[msg.sender][_spender] += _value;
-        Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
+        emit Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
         return true;
     }
 
-    function unapprove( address _spender ) public returns( bool success_ ) {   // Unapprove an address
+    function unapprove( address _spender ) 
+        public returns( bool success_ ) {   // Unapprove an address
         require(allowance[msg.sender][_spender] > 0);
         allowance[msg.sender][_spender] = 0;
-        Approval(msg.sender, _spender, 0);
+        emit Approval(msg.sender, _spender, 0);
         return true;
     }
 
     //ToDo: What happens if they don't have receiveApproval?
     //ToDo: Check example that arguments are in right place.
     //Requires address to have function called "receiveApproval"
-    function approveAndCall( address _spender, uint256 _value, bytes _extraData ) public returns ( bool success_ ) {   // Approve Address & Notify _spender ( Ignore reponse )
+    function approveAndCall( address _spender, uint256 _value, bytes _extraData ) 
+        public returns ( bool success_ ) {   // Approve Address & Notify _spender ( Ignore reponse )
         if ( approve(_spender, _value) ) {
             TokenERCOptional lTokenSpender = TokenERCOptional(_spender);
             if ( lTokenSpender.receiveApproval(msg.sender, _value, this, _extraData) ) {
@@ -120,7 +128,8 @@ contract MarketPlaceToken {
         return false;
     }
 
-    function setMarketPlace( address _marketplace ) public returns ( bool success_ ) {   // Only called once to set the marketplace address
+    function setMarketPlace( address _marketplace ) 
+        public returns ( bool success_ ) {   // Only called once to set the marketplace address
         require(msg.sender == admin);
         uint256 i = 0;
         while (i < marketplaceAddress.length) {
@@ -128,36 +137,39 @@ contract MarketPlaceToken {
             i++;
         }
         marketplaceAddress.push(_marketplace);
-        NewMarketplace(_marketplace, now);
+        emit NewMarketplace(_marketplace, now);
         return true;
     }
 
-    function setPayOutLimit( uint256 _newPayOutLimit ) public returns ( bool success_ ) {
+    function setPayOutLimit( uint256 _newPayOutLimit ) 
+        public returns ( bool success_ ) {
         require(msg.sender == admin);
         payOutLimit = _newPayOutLimit;
-        NewPayout(payOutLimit, now);
+        emit NewPayout(payOutLimit, now);
         return true;
     }
 
-    function electAdmin( address _elect ) public returns ( bool success_ ) {
+    function electAdmin( address _elect ) 
+        public returns ( bool success_ ) {
         require(balanceOf[msg.sender] > 0);
         if ( cast[msg.sender] != address(0) ) {   //remove previous vote
             votes[cast[msg.sender]] -= balanceOf[msg.sender];
-            NewVote(msg.sender, cast[msg.sender], votes[cast[msg.sender]], now);
+            emit NewVote(msg.sender, cast[msg.sender], votes[cast[msg.sender]], now);
         }
         cast[msg.sender] = _elect;
         if ( _elect != address(0)) {
             votes[_elect] += balanceOf[msg.sender];
-            NewVote(msg.sender, _elect, votes[_elect], now);
+            emit NewVote(msg.sender, _elect, votes[_elect], now);
             if ( _elect != admin && votes[_elect] > totalSupply / 2 ) {
                 admin = _elect;
-                NewAdmin(admin, now);
+                emit NewAdmin(admin, now);
             }
         }
         return true;
     }
 
-    function payOut( uint256 _marketPlaceIndex) public returns ( bool success_ ) {   // Distribute Ether from MarketPlace IP to token holders
+    function payOut( uint256 _marketPlaceIndex) 
+        public returns ( bool success_ ) {   // Distribute Ether from MarketPlace IP to token holders
         require(_marketPlaceIndex < marketplaceAddress.length);
         MarketPlace lMarketPlace = MarketPlace(marketplaceAddress[_marketPlaceIndex]);
         uint256 lValue = lMarketPlace.accountBalance(address(0), this);
@@ -166,7 +178,7 @@ contract MarketPlaceToken {
         if ( lValue > payOutLimit ) {   //1 Ether
             if ( lMarketPlace.withdraw(address(0), lValue) ) {
                 payouts += ( lValue / totalSupply );
-                NewPayoutAmount(payouts, now);
+                emit NewPayoutAmount(payouts, now);
                 return true;
             } else {
                 return false;
@@ -176,50 +188,51 @@ contract MarketPlaceToken {
         }
     }
 
-    function setPayOut( address _holder ) internal returns ( bool success_ ) {   
+    function setPayOut( address _holder ) 
+        internal returns ( bool success_ ) {   
         if ( paidOut[_holder] < payouts ) {
             uint256 lTokens = balanceOf[_holder];
             if ( _holder == author ) {
                 lTokens += totalSupply - outstandingSupply;
             }
             account[_holder] += ( payouts - paidOut[_holder] ) * lTokens;
-            NewAddressPaid(_holder, ( payouts - paidOut[_holder] ) * lTokens, now);
+            emit NewAddressPaid(_holder, ( payouts - paidOut[_holder] ) * lTokens, now);
             paidOut[_holder] = payouts;
             return true;
         }
         return false;
     }
 
-    function getPayOut() public returns ( bool success_ ) {
+    function getPayOut() 
+        public returns ( bool success_ ) {
         require(balanceOf[msg.sender] > 0 || msg.sender == author);
         return setPayOut(msg.sender);
     }
 
-    function withdraw() public returns ( bool success_ ) {
+    function withdraw() 
+        public returns ( bool success_ ) {
         uint256 lValue = account[msg.sender];
         if ( lValue > 0 ) {
             account[msg.sender] = 0;
-            if ( !msg.sender.send(lValue) ) {
-                account[msg.sender] = lValue;
-                return false;
-            }
-            WithDrawEther(msg.sender, lValue, now);
+            msg.sender.transfer(lValue);
+            emit WithDrawEther(msg.sender, lValue, now);
             return true;
         }
         return false;
     }
 
-    function doRaise( uint256 _price, uint256 _tokens) public returns ( bool success_ ) {
+    function doRaise( uint256 _price, uint256 _tokens) 
+        public returns ( bool success_ ) {
         require(msg.sender == author);
         if ( raiseTokens == 0 ) {
             raiseTokens = _tokens;
             raisePrice = _price;
-            DoingRaise(raisePrice, raiseTokens, now);
+            emit DoingRaise(raisePrice, raiseTokens, now);
             return true;
         } else {
             if ( raisePrice > _price ) {
                 raisePrice = _price;
-                ChangingRaise(raisePrice, raiseTokens, now);
+                emit ChangingRaise(raisePrice, raiseTokens, now);
                 return true;
             } else {
                 return false;
@@ -228,7 +241,8 @@ contract MarketPlaceToken {
         return false;
     }
 
-    function buyMPT() public payable returns ( bool success_ ) {
+    function buyMPT() 
+        public payable returns ( bool success_ ) {
         require(msg.value > 0);
         require(raiseTokens > 0);
         require(raisePrice > 0);
@@ -245,7 +259,7 @@ contract MarketPlaceToken {
         setPayOut(author);
         setPayOut(msg.sender);
         balanceOf[msg.sender] += lTokens;
-        Transfer(address(0), msg.sender, lTokens);
+        emit Transfer(address(0), msg.sender, lTokens);
         return true;
     }
 }
