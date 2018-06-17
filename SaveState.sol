@@ -1,4 +1,4 @@
-pragma solidity ^0.4.16;
+pragma solidity ^0.4.23;
 
 contract SaveState { 
     // The blockchain is the back-end server - this contract sets and updates state for a given address
@@ -34,90 +34,104 @@ contract SaveState {
     event ChangeUTinyInt( address indexed account, bytes32 indexed key, uint16 value );
     event ChangeTinyInt( address indexed account, bytes32 indexed key, int16 value );
 
-    function SaveState() public {
+    constructor() public {
         owner = msg.sender;
     }
 
-    function() payable public {
+    function() payable 
+        public {
         //Fallback function. Fail for everything. Only accept legit transactions
         require (false);
     }
 
-    function saveBool( bytes32 _key, bool _value ) public returns ( bool success_ ) {
+    function saveBool( bytes32 _key, bool _value ) 
+        public returns ( bool success_ ) {
         getBool[msg.sender][_key] = _value;
-        ChangeBool(msg.sender, _key, _value);
+        emit ChangeBool(msg.sender, _key, _value);
         return true;
     }
 
-    function saveString( bytes32 _key, bytes32 _value ) public returns ( bool success_ ) {
+    function saveString( bytes32 _key, bytes32 _value ) 
+        public returns ( bool success_ ) {
         getString[msg.sender][_key] = _value;
-        ChangeString(msg.sender, _key, _value);
+        emit ChangeString(msg.sender, _key, _value);
         return true;
     }
 
-    function saveAddress( bytes32 _key, address _value ) public returns ( bool success_ ) {
+    function saveAddress( bytes32 _key, address _value ) 
+        public returns ( bool success_ ) {
         getAddress[msg.sender][_key] = _value;
-        ChangeAddress(msg.sender, _key, _value);
+        emit ChangeAddress(msg.sender, _key, _value);
         return true;
     }
 
-    function saveUXLargeInt( bytes32 _key, uint256 _value ) public returns ( bool success_ ) {
+    function saveUXLargeInt( bytes32 _key, uint256 _value ) 
+        public returns ( bool success_ ) {
         getUXLargeInt[msg.sender][_key] = _value;
-        ChangeUXLargeInt(msg.sender, _key, _value);
+        emit ChangeUXLargeInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveXLargeInt( bytes32 _key, int256 _value ) public returns ( bool success_ ) {
+    function saveXLargeInt( bytes32 _key, int256 _value ) 
+        public returns ( bool success_ ) {
         getXLargeInt[msg.sender][_key] = _value;
-        ChangeXLargeInt(msg.sender, _key, _value);
+        emit ChangeXLargeInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveULargeInt( bytes32 _key, uint128 _value ) public returns ( bool success_ ) {
+    function saveULargeInt( bytes32 _key, uint128 _value ) 
+        public returns ( bool success_ ) {
         getULargeInt[msg.sender][_key] = _value;
-        ChangeULargeInt(msg.sender, _key, _value);
+        emit ChangeULargeInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveLargeInt( bytes32 _key, int128 _value ) public returns ( bool success_ ) {
+    function saveLargeInt( bytes32 _key, int128 _value ) 
+        public returns ( bool success_ ) {
         getLargeInt[msg.sender][_key] = _value;
-        ChangeLargeInt(msg.sender, _key, _value);
+        emit ChangeLargeInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveUInt( bytes32 _key, uint64 _value ) public returns ( bool success_ ) {
+    function saveUInt( bytes32 _key, uint64 _value ) 
+        public returns ( bool success_ ) {
         getUInt[msg.sender][_key] = _value;
-        ChangeUInt(msg.sender, _key, _value);
+        emit ChangeUInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveInt( bytes32 _key, int64 _value ) public returns ( bool success_ ) {
+    function saveInt( bytes32 _key, int64 _value ) 
+        public returns ( bool success_ ) {
         getInt[msg.sender][_key] = _value;
-        ChangeInt(msg.sender, _key, _value);
+        emit ChangeInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveUSmallInt( bytes32 _key, uint32 _value ) public returns ( bool success_ ) {
+    function saveUSmallInt( bytes32 _key, uint32 _value ) 
+        public returns ( bool success_ ) {
         getUSmallInt[msg.sender][_key] = _value;
-        ChangeUSmallInt(msg.sender, _key, _value);
+        emit ChangeUSmallInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveSmallInt( bytes32 _key, int32 _value ) public returns ( bool success_ ) {
+    function saveSmallInt( bytes32 _key, int32 _value ) 
+        public returns ( bool success_ ) {
         getSmallInt[msg.sender][_key] = _value;
-        ChangeSmallInt(msg.sender, _key, _value);
+        emit ChangeSmallInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveUTinyInt( bytes32 _key, uint16 _value ) public returns ( bool success_ ) {
+    function saveUTinyInt( bytes32 _key, uint16 _value ) 
+        public returns ( bool success_ ) {
         getUTinyInt[msg.sender][_key] = _value;
-        ChangeUTinyInt(msg.sender, _key, _value);
+        emit ChangeUTinyInt(msg.sender, _key, _value);
         return true;
     }
 
-    function saveTinyInt( bytes32 _key, int16 _value ) public returns ( bool success_ ) {
+    function saveTinyInt( bytes32 _key, int16 _value ) 
+        public returns ( bool success_ ) {
         getTinyInt[msg.sender][_key] = _value;
-        ChangeTinyInt(msg.sender, _key, _value);
+        emit ChangeTinyInt(msg.sender, _key, _value);
         return true;
     }
 }
