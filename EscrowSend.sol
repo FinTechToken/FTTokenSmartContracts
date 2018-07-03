@@ -1,8 +1,9 @@
-pragma solidity ^0.4.23;
+pragma solidity 0.4.23;
 
 contract TokenERC20 {
     function transfer( address _to, uint256 _value ) public returns ( bool success_ );
     function transferFrom( address _from, address _to, uint256 _value ) public returns ( bool success_ );
+    function balanceOf( address ) public pure returns (uint256);
 }
 
 //copyright 2018 TuitionCoin LLC
@@ -92,36 +93,38 @@ contract EscrowSend {
         }
     }
 
+    function getInfo(address _token) public view returns (uint256 info_) {
+        TokenERC20 localToken = TokenERC20(_token);
+        return localToken.balanceOf(msg.sender);
+    }
+
     //Call approve on _token prior to calling sendAmount
     function sendAmount( bytes32 _hash, address _token, uint256 _value ) 
         payable public returns ( bool success_ ) {
         require(!freeze);
-        require(escrowAmount[_hash] != 0);
+        require(escrowAmount[_hash]==0);
         bool isToken = ( _token != address(0) && _value > 0 );
         bool isEther = ( _token == address(0) && _value == 0 );
         require(!isToken && isEther || isToken && !isEther);
         require(( isToken && msg.value == transactionFixedFee ) || (isEther && msg.value > transactionFixedFee));
         if ( isToken ) {
             require(( msg.value + ownerBalance[address(0)] ) > ownerBalance[address(0)]);
-            require(( ownerBalance[_token] + getTransactionFee(_value) ) > ownerBalance[_token]);
+            require(( ownerBalance[_token] + getTransactionFee(_value) ) >= ownerBalance[_token]);
             TokenERC20 localToken = TokenERC20(_token);
-            if ( localToken.transferFrom(msg.sender, this, _value) ) {
-                ownerBalance[address(0)] = ( ownerBalance[address(0)] + msg.value );
-                ownerBalance[_token] = ( ownerBalance[_token] + getTransactionFee(_value) );
-                escrowAmount[_hash] = ( _value - getTransactionFee(_value) );
-                escrowToken[_hash] = _token;
-                escrowSender[_hash] = msg.sender;
-                escrowTime[_hash] = now;
-                success_ = true;
-            } else {
-                require(false);
-            }
+            localToken.transferFrom(msg.sender, this, _value);
+            ownerBalance[address(0)] = ( ownerBalance[address(0)] + msg.value );
+            ownerBalance[_token] = ( ownerBalance[_token] + getTransactionFee(_value) );
+            escrowAmount[_hash] = ( _value - getTransactionFee(_value) );
+            escrowToken[_hash] = _token;
+            escrowSender[_hash] = msg.sender;
+            escrowTime[_hash] = now;
+            success_ = true;
         }
         if ( isEther ) {
             uint256 value = msg.value - transactionFixedFee;
             require(( getTransactionFee(value) + transactionFixedFee + ownerBalance[address(0)] ) > ownerBalance[address(0)]);
             ownerBalance[address(0)] = ownerBalance[address(0)] + getTransactionFee(value) + transactionFixedFee;
-            escrowAmount[_hash] = ( _value - getTransactionFee(_value) );
+            escrowAmount[_hash] = ( value - getTransactionFee(value) );
             if(escrowToken[_hash] != address(0)) {
                 escrowToken[_hash] = address(0);
             }
@@ -135,7 +138,7 @@ contract EscrowSend {
         return success_;
     }
 
-    function getAmount( bytes32 _hashKey ) 
+    function getAmount( string _hashKey ) 
         public returns ( bool success_ ) {
         require(!freeze);
         bytes32 theHash = keccak256(_hashKey);
