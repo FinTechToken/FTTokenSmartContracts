@@ -44,6 +44,7 @@ contract CryptoNoChangeToken {
         author = msg.sender;
         admin = author;
         change = 0x00b5b4356b7c8c1d3697fffb15ca3d43a348794252;
+        exportEscrow = 0x004898bc5a3ef06e89dc9704ec5d5a553a396891d8;
         balanceOf[admin] = totalSupply;
     }
 
@@ -147,7 +148,7 @@ contract CryptoNoChangeToken {
     function export( address _cryptoAddress, uint256 _value )
         public returns (bool success_ ) {
         require(totalEscrow + _value > totalEscrow);
-        require(totalOutstanding > _value);
+        require(totalOutstanding >= _value);
         require(_value > 0);
         internalTransfer(msg.sender, exportEscrow, _value);
         totalEscrow += _value;
