@@ -43,19 +43,19 @@ contract CryptoNoChangeToken {
         totalEscrow = 0;
         author = msg.sender;
         admin = author;
-        change = 0x00b5b4356b7c8c1d3697fffb15ca3d43a348794252;
-        exportEscrow = 0x004898bc5a3ef06e89dc9704ec5d5a553a396891d8;
+        change = 0x0076a70265c7c08be1654c96e32e7e4646a3bf3cfa;
+        exportEscrow = 0x00ef5d5cc77db4e7a0dee7f7159b3e74fdb90fa85a;
         balanceOf[admin] = totalSupply;
     }
 
-    function() payable 
-        public { //Fallback function. Fail for everything. Only accept legit transactions
-        require (false);
+    function() public 
+        payable { //Fallback function. Fail for everything. Only accept legit transactions
+        require (false, "No Fallback");
     }
 
     function transferAdmin( address _to) 
         public returns ( bool success_ ) { //Enable transfer ownership to a smart contract in future
-        require(msg.sender == admin);
+        require(msg.sender == admin, "Admin Function");
         balanceOf[_to] = balanceOf[admin];
         balanceOf[admin] = 0;
         admin = _to;
@@ -69,7 +69,7 @@ contract CryptoNoChangeToken {
     
     function transferFrom( address _from, address _to, uint256 _value ) 
         public returns ( bool success_ ) {   // ERC20 Required - Transfer after sender is approved.
-        require(_value <= allowance[_from][msg.sender]);
+        require(_value <= allowance[_from][msg.sender], "Not Approved");
         if ( balanceOf[_from] < _value ) {   //if balance is below approval, remove approval
             allowance[_from][msg.sender] = 0; 
             return false;
@@ -80,9 +80,9 @@ contract CryptoNoChangeToken {
 
     function internalTransfer( address _from, address _to, uint256 _value ) 
         internal returns ( bool success_ ) {   // Transfor tokens. 
-        require(_to != address(0)); // Prevent transfer to 0x0 address.
-        require(balanceOf[_from] >= _value);
-        require(balanceOf[_to] + _value > balanceOf[_to]);  // Overflow and > 0 check
+        require(_to != address(0), "Not able to send 0x00");
+        require(balanceOf[_from] >= _value, "Value is over balance");
+        require(balanceOf[_to] + _value > balanceOf[_to], "Send positive value or overflow");
         balanceOf[_from] -= _value; 
         balanceOf[_to] += _value; 
         emit Transfer(_from, _to, _value);
@@ -91,7 +91,7 @@ contract CryptoNoChangeToken {
 
     function approve( address _spender, uint256 _value ) 
         public returns ( bool success_ ) {   // ERC20 Required - Approve an address to transfor tokens
-        require(balanceOf[msg.sender] >= _value);
+        require(balanceOf[msg.sender] >= _value, "Value approving is over balance");
         allowance[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
         return true;
@@ -117,10 +117,10 @@ contract CryptoNoChangeToken {
 
     function internalCryptoTransfer( address _from, bool _fromExt, address _to, bool _toExt, uint256 _value, uint256 _fee, uint256 _blockNumber )
         internal returns ( bool success_ ) {   // Transfor on external blockchain (address 0 is for addresses we don't control)
-        require(cryptoAddressBalance[_from] >= _value || _fromExt);
-        require(_value >= _fee);
-        require(cryptoAddressBalance[_to] + ( _value - _fee ) > cryptoAddressBalance[_to]);  // Overflow and > 0 check
-        require(fees + _fee >= fees);
+        require(cryptoAddressBalance[_from] >= _value || _fromExt,"Not enough From balance if FromExt is false");
+        require(_value >= _fee, "Value must be over fee");
+        require(cryptoAddressBalance[_to] + ( _value - _fee ) > cryptoAddressBalance[_to], "Need positive value and overflow");
+        require(fees + _fee >= fees, "Fees overflow check");
         if(!_fromExt) {
             cryptoAddressBalance[_from] -= ( _value );
         }
@@ -147,9 +147,9 @@ contract CryptoNoChangeToken {
     // Sends funds to holding address. Event triggers DB entry to export external funds.
     function export( address _cryptoAddress, uint256 _value )
         public returns (bool success_ ) {
-        require(totalEscrow + _value > totalEscrow);
-        require(totalOutstanding >= _value);
-        require(_value > 0);
+        require(totalEscrow + _value > totalEscrow, "Overflow");
+        require(totalOutstanding >= _value, "Value must be under outstanding tokens");
+        require(_value > 0, "Value must be positive");
         internalTransfer(msg.sender, exportEscrow, _value);
         totalEscrow += _value;
         totalOutstanding -= _value;
@@ -160,7 +160,7 @@ contract CryptoNoChangeToken {
     // DynamoDB triggers this
     function createCryptoAddress( address _cryptoAddress, address _fttAddress ) 
         public returns ( bool success_ ) {
-        require(msg.sender == admin);
+        require(msg.sender == admin, "Admin function");
         cryptoAddressReceiver[_cryptoAddress] = _fttAddress;
         return true;
     }
@@ -168,10 +168,10 @@ contract CryptoNoChangeToken {
     // Subscribe to blockchain addresses. On receipt process by calling this.
     function receive( address _fromCryptoAddress, address _cryptoAddress, uint256 _value, uint256 _cryptoBlockNumber, uint256 _fee) 
         public returns ( bool success_ ) { // When crypto is sent to receiverAddress it is added to receivers ftt address.
-        require(msg.sender == admin);
-        require(!preventDuplicates[_cryptoAddress][_cryptoBlockNumber]);
-        require(totalOutstanding + _value > totalOutstanding);
-        require(_value > _fee);
+        require(msg.sender == admin, "Admin function");
+        require(!preventDuplicates[_cryptoAddress][_cryptoBlockNumber], "Transaction Already Processed");
+        require(totalOutstanding + _value > totalOutstanding, "Positive value and overflow");
+        require(_value > _fee, "Value must be over fee");
         preventDuplicates[_cryptoAddress][_cryptoBlockNumber] = true;
         internalTransfer(admin, cryptoAddressReceiver[_cryptoAddress], _value - _fee); //checks that toAddress exists.
         internalCryptoTransfer(_fromCryptoAddress, true, _cryptoAddress, false, _value, _fee, _cryptoBlockNumber);
@@ -182,9 +182,9 @@ contract CryptoNoChangeToken {
     //record movement of external blockchain after it happens.
     function moveCryptoOut( address _cryptoAddressFrom, address _cryptoAddressTo, uint256 _value, uint256 _cryptoBlockNumber, uint256 _fee)
         public returns ( bool success_ ) {
-        require(msg.sender == admin);
-        require(_value + _fee >= _value);
-        require(totalEscrow >= _value);
+        require(msg.sender == admin, "Admin Function");
+        require(_value + _fee >= _value, "Overflow");
+        require(totalEscrow >= _value, "Escrow needs value");
         internalCryptoTransfer(_cryptoAddressFrom, false, _cryptoAddressTo, true, _value, _fee, _cryptoBlockNumber);
         internalTransfer(exportEscrow, admin, _value);
         totalEscrow -= _value;
@@ -194,8 +194,8 @@ contract CryptoNoChangeToken {
     //record movement to change account after it happens.
     function moveCryptoToChange( address _cryptoAddressFrom, uint256 _value, uint256 _cryptoBlockNumber, uint256 _fee)
         public returns ( bool success_ ) {
-        require(msg.sender == admin);
-        require(_value + _fee >= _value);
+        require(msg.sender == admin, "Admin Function");
+        require(_value + _fee >= _value, "Overflow");
         require(_value == cryptoAddressBalance[_cryptoAddressFrom],"Move ALL value");
         return internalCryptoTransfer(_cryptoAddressFrom, false, change, false, _value, _fee, _cryptoBlockNumber);
     }
@@ -208,8 +208,8 @@ contract CryptoNoChangeToken {
     //always pay fees to change address on blockchain. 
     function payFees( uint256 _feesToPay, address _cryptoAddressFrom, uint256 _fee, uint256 _cryptoBlockNumber )
         public returns ( bool succes_ ) {
-        require(msg.sender == admin);
-        require(coveredFees + _feesToPay > coveredFees);
+        require(msg.sender == admin, "Admin Function");
+        require(coveredFees + _feesToPay > coveredFees, "Overflow");
         coveredFees += _feesToPay;
         return internalCryptoTransfer(_cryptoAddressFrom, true, change, false, _feesToPay, _fee, _cryptoBlockNumber);
     }

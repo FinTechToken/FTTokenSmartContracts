@@ -19,10 +19,8 @@ contract MarketPlace {
     Book offerBook;
     mapping ( address => mapping ( address => uint256 ) ) public accountBalance;
     mapping ( address => mapping ( bool => mapping ( uint256 => Book ) ) ) public offersAtPrice;
-    string public name = "TokenMP";
-    string public author = "copyright TuitionCoin LLC";
+    string public name = "MarketPlace";
     address public owner;
-    bool public ownerChanged;
     bool public freeze;
     uint256 public addToBookFee;
     uint8 public transactionFee;
@@ -49,28 +47,28 @@ contract MarketPlace {
         emit MessageOwner(owner, now);
     }
 
-    function() payable 
-        public { 
-        require(false);
+    function() public 
+        payable { 
+        require(false, "No Fallback");
     }
 
     //Call approve on _token prior to calling deposit
     function deposit( address _token, uint256 _value ) 
-        payable public returns ( bool success_ ) {
-        require(!freeze);
+        public payable returns ( bool success_ ) {
+        require(!freeze, "freeze");
         if ( _token != address(0) && _value > 0 ) {
-            require(accountBalance[_token][msg.sender] + _value >= accountBalance[_token][msg.sender]);
+            require(accountBalance[_token][msg.sender] + _value >= accountBalance[_token][msg.sender], "Overflow1");
             TokenERC20 localToken = TokenERC20(_token);
             if ( localToken.transferFrom(msg.sender, this, _value) ) {
                 accountBalance[_token][msg.sender] += _value;
                 emit MessageAccountDeposit(_token, msg.sender, _value, now);
                 success_ = true;
             } else {
-                require(false);
+                require(false, "UndoStack");
             }
         }
         if ( msg.value > 0 ) {
-            require(accountBalance[address(0)][msg.sender] + msg.value >= accountBalance[address(0)][msg.sender]);
+            require(accountBalance[address(0)][msg.sender] + msg.value >= accountBalance[address(0)][msg.sender], "Overflow2");
             accountBalance[address(0)][msg.sender] += msg.value;
             emit MessageAccountDeposit(address(0), msg.sender, msg.value, now);
             success_ = true;
@@ -80,14 +78,14 @@ contract MarketPlace {
 
     function withdrawal( address _token, uint256 _value) 
         public returns ( bool success_ ) {
-        require(accountBalance[_token][msg.sender] >= _value);
+        require(accountBalance[_token][msg.sender] >= _value, "Too much to withdraw");
         accountBalance[_token][msg.sender] -= _value;
         if ( _token == address(0) ) {
             msg.sender.transfer(_value);
         } else {
             TokenERC20 localToken = TokenERC20(_token);
             if ( !localToken.transfer(msg.sender, _value) ) {
-                require(false);
+                require(false, "Undostack2");
             }
         }
         emit MessageAccountWithdrawal(_token, msg.sender, _value, now);
@@ -96,19 +94,19 @@ contract MarketPlace {
 
     function makeOffer( address _token, bool _buy, uint256 _amount, uint256 _shares, uint256 _startAmount ) 
         public returns ( bool _success) {
-        require(!freeze);
-        require(_shares != 0);
-        require(_amount != 0);
-        require(_amount != 2**256 - 1);
-        require(_token != address(0));
-        require(( _amount * _shares ) / _shares == _amount);
-        require((_amount * _shares) / (10**uint256(bidDecimal)) + addToBookFee >= (_amount * _shares) / (10**uint256(bidDecimal)));
-        require(((_amount * _shares ) / (10**uint256(bidDecimal))) * (10**uint256(bidDecimal)) == _amount * _shares);
+        require(!freeze, "Freeze");
+        require(_shares != 0, "Need Shares");
+        require(_amount != 0, "Need amount");
+        require(_amount != 2**256 - 1, "Not max amount");
+        require(_token != address(0), "Not zero address");
+        require(( _amount * _shares ) / _shares == _amount, "Overflow1");
+        require((_amount * _shares) / (10**uint256(bidDecimal)) + addToBookFee >= (_amount * _shares) / (10**uint256(bidDecimal)), "Overflow2");
+        require(((_amount * _shares ) / (10**uint256(bidDecimal))) * (10**uint256(bidDecimal)) == _amount * _shares, "Overflow3");
         if ( _buy ) {
-            require(accountBalance[address(0)][msg.sender] >= _amount * _shares / (10**uint256(bidDecimal)) + addToBookFee);
+            require(accountBalance[address(0)][msg.sender] >= _amount * _shares / (10**uint256(bidDecimal)) + addToBookFee, "Need Enough Amount");
         } else {
-            require(accountBalance[_token][msg.sender] >= _shares);
-            require(((_amount * _shares) / (10**uint256(bidDecimal))) - getTransactionFee((_amount * _shares) / (10**uint256(bidDecimal))) >= addToBookFee);
+            require(accountBalance[_token][msg.sender] >= _shares, "Need Enough Shares");
+            require(((_amount * _shares) / (10**uint256(bidDecimal))) - getTransactionFee((_amount * _shares) / (10**uint256(bidDecimal))) >= addToBookFee, "Overflow4");
         }
         uint256[9] memory localVars;
         localVars[8] = _shares;
@@ -230,10 +228,10 @@ contract MarketPlace {
 
     function cancelOffer( address _token, bool _buy, uint256 _amount ) 
         public returns ( bool success_ ) {
-        require(_token != address(0));
-        require(_amount != 0);
-        require(_amount != 2**256 - 1);
-        require(offersAtPrice[_token][_buy][_amount].currentOffersLength > 1);
+        require(_token != address(0), "Not zero token");
+        require(_amount != 0, "Not zero amount");
+        require(_amount != 2**256 - 1, "Not max amount");
+        require(offersAtPrice[_token][_buy][_amount].currentOffersLength > 1, "No offer to cancel");
         bool localToDelete = true;
         uint256 localLength = offersAtPrice[_token][_buy][_amount].currentOffersLength;
         uint256 localIndex;
@@ -265,30 +263,29 @@ contract MarketPlace {
     //approveAndCall to transfer tokens into TokenMP account
     function receiveApproval( address _grantor, uint256 _value, address _from,  bytes _extraData ) 
         public returns ( bool success_ ) {
-        require(!freeze);
-        require(accountBalance[_from][_grantor] + _value >= accountBalance[_from][_grantor]);
+        require(!freeze, "Frozen");
+        require(accountBalance[_from][_grantor] + _value >= accountBalance[_from][_grantor], "Overflow1");
         TokenERC20 localTokenFrom = TokenERC20(_from);
         if ( localTokenFrom.transferFrom(_grantor, this, _value) ) {
             accountBalance[_from][_grantor] += _value;
             emit MessageAccountDeposit(_from, _grantor, _value, now);
             return true;
+        } else {
+            require(false, "MP ReceiveApproval Didn't work");
         }
-        require(false);
     }
 
     function changeOwner( address _newOwner ) 
         public returns ( bool success_ ) {
-        require(owner == msg.sender);
-        require(!ownerChanged);
+        require(owner == msg.sender, "Admin function");
         owner = _newOwner;
-        ownerChanged = true;
         emit MessageOwner(owner, now);
         return true;
     }
 
     function freeze() 
         public returns ( bool success_ ) {
-        require(owner == msg.sender);
+        require(owner == msg.sender, "Admin function");
         freeze = !freeze;
         emit MessageFreeze(freeze, now);
         return true;
@@ -299,8 +296,8 @@ contract MarketPlace {
     If totalOffers decreases the contract has extra ether that isn't accessable.
     We chose not to make it accessable */
     function updateFees( uint8 _newTransactionFee, uint8 _newTransactionFeeMultiple, uint256 _newAddToBookFee ) 
-        payable public returns ( bool success_ ) {
-        require(owner == msg.sender);
+        public payable returns ( bool success_ ) {
+        require(owner == msg.sender, "Admin Function");
         uint256 newAddToBookFee = _newAddToBookFee;
         bool lChange;
         if ( ( _newTransactionFee != 0 && transactionFee != _newTransactionFee ) || 
@@ -324,7 +321,9 @@ contract MarketPlace {
         }
     }
 
-    function completeTrade( uint256 _transactionFee, uint256 _etherTrade, uint256 _addToBookFeeTrade, uint256 _tokenTrade, address _token, bool _buy ) 
+    function completeTrade( 
+        uint256 _transactionFee, uint256 _etherTrade, uint256 _addToBookFeeTrade, 
+        uint256 _tokenTrade, address _token, bool _buy ) 
         internal {
         uint256 transactionFees = _transactionFee;
         if ( _buy ) {
@@ -351,9 +350,9 @@ contract MarketPlace {
         uint256 startAmount = _startAmount;
         if ( startAmount > 0 ) {
             if ( _buy ) {
-                require(startAmount > _amount);
+                require(startAmount > _amount, "Amount wrong1");
             } else {
-                require(startAmount < _amount);
+                require(startAmount < _amount, "Amount wrong2");
             }
         }
         Book storage localTemp = offerBook;
