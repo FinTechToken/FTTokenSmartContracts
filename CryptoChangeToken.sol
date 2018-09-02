@@ -45,8 +45,8 @@ contract CryptoChangeToken {
         totalEscrow = 0;
         author = msg.sender;
         admin = author;
-        change = "1NejLVKZGueohVs5nt1cg26mFbVMXNqEXM"; // BitCoin Change Address
-        exportEscrow = 0x004898bc5a3ef06e89dc9704ec5d5a553a396891d8;
+        change = "1Co7e6gTmDEjXZQPQgDuE1jXxYu6DepCDJ"; // BitCoin Change Address
+        exportEscrow = 0x00ef5d5cc77db4e7a0dee7f7159b3e74fdb90fa85a;
         balanceOf[admin] = totalSupply;
     }
 

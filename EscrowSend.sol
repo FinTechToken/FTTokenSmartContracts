@@ -5,7 +5,6 @@ contract TokenERC20 {
     function transferFrom( address _from, address _to, uint256 _value ) public returns ( bool success_ );
 }
 
-//copyright 2018 TuitionCoin LLC
 contract EscrowSend {
     mapping ( bytes32 => uint256 ) private escrowAmount;
     mapping ( bytes32 => address ) private escrowToken;
@@ -35,14 +34,14 @@ contract EscrowSend {
         emit MessageChangeFees(transactionFee, transactionFeeMultiple, transactionFixedFee, now);
     }
 
-    function() payable 
-        public { 
-        require(false);
+    function() public 
+        payable { 
+        require(false, "No Fallback");
     }
 
     function freeze() 
         public returns ( bool success_ ) {
-        require(owner == msg.sender);
+        require(owner == msg.sender, "Admin Function");
         freeze = !freeze;
         emit MessageFreeze(freeze, now);
         return true;
@@ -50,15 +49,15 @@ contract EscrowSend {
 
     function changeOwner( address _newOwner ) 
         public returns ( bool success_ ) {
-        require(owner == msg.sender);
+        require(owner == msg.sender, "Admin Function");
         owner = _newOwner;
         return true;
     }
 
     /* This can increase/decrease at any time since fees are taken on submission */
     function updateFees( uint8 _newTransactionFee, uint8 _newTransactionFeeMultiple, uint256 _newTransactionFixedFee ) 
-        payable public returns ( bool success_ ) {
-        require(owner == msg.sender);
+        public payable returns ( bool success_ ) {
+        require(owner == msg.sender, "Admin Function");
         transactionFee = _newTransactionFee;
         transactionFeeMultiple = _newTransactionFeeMultiple;
         transactionFixedFee = _newTransactionFixedFee;
@@ -69,13 +68,13 @@ contract EscrowSend {
     function getTransactionFee( uint256 _totalAmount ) 
         internal view returns ( uint256 theFee_ ) {
         theFee_ = ( ( _totalAmount / ( 10**uint256(transactionFee) ) ) * transactionFeeMultiple );
-        require(theFee_ < _totalAmount);
+        require(theFee_ < _totalAmount, "Fee less than totalamount");
         return theFee_;
     }
 
     function getOwnerBalance ( address _token )
         public returns ( bool success_ ) {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Admin Function");
         if(ownerBalance[_token] != 0){
             if(_token == address(0)) {
                 msg.sender.transfer(ownerBalance[_token]);
@@ -94,16 +93,16 @@ contract EscrowSend {
 
     //Call approve on _token prior to calling sendAmount
     function sendAmount( bytes32 _hash, address _token, uint256 _value ) 
-        payable public returns ( bool success_ ) {
-        require(!freeze);
-        require(escrowSender[_hash]==address(0));
+        public payable returns ( bool success_ ) {
+        require(!freeze, "Frozen");
+        require(escrowSender[_hash]==address(0), "Hash already used");
         bool isToken = ( _token != address(0) && _value > 0 );
         bool isEther = ( _token == address(0) && _value == 0 );
-        require(!isToken && isEther || isToken && !isEther);
-        require(( isToken && msg.value == transactionFixedFee ) || (isEther && (msg.value > transactionFixedFee || msg.value==0)));
+        require(!isToken && isEther || isToken && !isEther, "Send Token or Ether");
+        require((isToken && msg.value == transactionFixedFee) || (isEther && (msg.value > transactionFixedFee || msg.value==0)),"Need ether fee");
         if ( isToken ) {
-            require(( msg.value + ownerBalance[address(0)] ) >= ownerBalance[address(0)]);
-            require(( ownerBalance[_token] + getTransactionFee(_value) ) >= ownerBalance[_token]);
+            require(( msg.value + ownerBalance[address(0)] ) >= ownerBalance[address(0)], "Overflow1");
+            require(( ownerBalance[_token] + getTransactionFee(_value) ) >= ownerBalance[_token], "Overflow2");
             TokenERC20 localToken = TokenERC20(_token);
             if(localToken.transferFrom(msg.sender, this, _value)) {
                 ownerBalance[address(0)] = ( ownerBalance[address(0)] + msg.value );
@@ -118,7 +117,7 @@ contract EscrowSend {
         if ( isEther ) {
             if(msg.value > 0) {
                 uint256 value = msg.value - transactionFixedFee;
-                require(( getTransactionFee(value) + transactionFixedFee + ownerBalance[address(0)] ) > ownerBalance[address(0)]);
+                require(( getTransactionFee(value) + transactionFixedFee + ownerBalance[address(0)] ) >= ownerBalance[address(0)], "Overflow3");
                 ownerBalance[address(0)] = ownerBalance[address(0)] + getTransactionFee(value) + transactionFixedFee;
                 escrowAmount[_hash] = ( value - getTransactionFee(value) );
                 success_ = true;
@@ -142,9 +141,9 @@ contract EscrowSend {
 
     function getAmount( string _hashKey ) 
         public returns ( bool success_ ) {
-        require(!freeze);
-        bytes32 theHash = keccak256(_hashKey);
-        require(escrowSender[theHash] != address(0));
+        require(!freeze, "Frozen");
+        bytes32 theHash = keccak256(abi.encodePacked(_hashKey));
+        require(escrowSender[theHash] != address(0), "Hash must have sender");
         if(escrowAmount[theHash] != 0) {
             if(escrowToken[theHash] == address(0)) {
                 msg.sender.transfer(escrowAmount[theHash]);
@@ -167,10 +166,10 @@ contract EscrowSend {
 
     function getNeverCached( bytes32 _hash) 
         public returns ( bool success_ ) {
-        require(escrowSender[_hash] == msg.sender);
+        require(escrowSender[_hash] == msg.sender, "Must be sender");
         uint256 day30 = 60*60*24*30; //60sec*60min*24hour*30days - Assumes approximately 1 second blocks.
-        require(escrowTime[_hash] + day30 > escrowTime[_hash]);
-        require(escrowTime[_hash] + day30 < now);
+        require(escrowTime[_hash] + day30 > escrowTime[_hash], "30days overflow");
+        require(escrowTime[_hash] + day30 < now, "Must be 30 days of blocks past hash creation");
         if(escrowAmount[_hash] != 0) {
             if(escrowToken[_hash] == address(0)) {
                 msg.sender.transfer(escrowAmount[_hash]);
